@@ -1,0 +1,30 @@
+# Entorno virtual (local, nunca se versiona)
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Config local con secretos / overrides
+.env
+.env.example
+
+# Build
+dist/
+build/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+
+# Docs
+nexus-slim-diseno.md
+checklist-cruce-nexus-slim-mcpone.md
+checklist-flujo-completo-gateway.md
