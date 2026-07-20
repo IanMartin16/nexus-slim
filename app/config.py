@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # CORS para el widget montado en el portal.
     cors_origins: list[str] = ["*"]
 
-    model_config = SettingsConfigDict(env_prefix="NEXUS_", env_file=".env", extra="ignore", case_sensitive=True,)
+    model_config = SettingsConfigDict(env_prefix="NEXUS_", env_file=".env", extra="ignore", case_sensitive=False)
 
 
 settings = Settings()
