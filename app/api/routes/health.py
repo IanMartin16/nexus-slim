@@ -11,15 +11,9 @@ from app.models.health import (
     ReadyResponse,
     ServiceInfo,
 )
-from app.services.mcpone_health import MCPOneHealthClient
 
 
 router = APIRouter(prefix="/api/health", tags=["health"])
-
-mcpone_client = MCPOneHealthClient(
-    base_url=settings.MCPONE_BASE_URL,
-    timeout_seconds=2.0,
-)
 
 
 def utc_now() -> datetime:
@@ -31,16 +25,6 @@ def utc_now() -> datetime:
     response_model=HealthResponse,
 )
 async def health(response: Response) -> HealthResponse:
-    mcpone_status, latency_ms, message = (
-        await mcpone_client.check_readiness()
-    )
-
-    overall_status = (
-        "operational"
-        if mcpone_status == "operational"
-        else "degraded"
-    )
-
     response.status_code = status.HTTP_200_OK
 
     return HealthResponse(
@@ -51,7 +35,8 @@ async def health(response: Response) -> HealthResponse:
             environment=settings.ENVIRONMENT,
             stack="fastapi",
         ),
-        status=overall_status,
+        status="operational",
+        readiness="ready",
         timestamp=utc_now(),
         uptime_seconds=get_uptime_seconds(),
         checks={
@@ -60,11 +45,6 @@ async def health(response: Response) -> HealthResponse:
             ),
             "configuration": HealthCheck(
                 status="operational",
-            ),
-            "mcpone": HealthCheck(
-                status=mcpone_status,
-                latency_ms=latency_ms,
-                message=message,
             ),
         },
     )
@@ -87,30 +67,15 @@ async def live() -> LiveResponse:
     response_model=ReadyResponse,
 )
 async def ready(response: Response) -> ReadyResponse:
-    mcpone_status, latency_ms, message = (
-        await mcpone_client.check_readiness()
-    )
-
-    is_ready = mcpone_status == "operational"
-
-    response.status_code = (
-        status.HTTP_200_OK
-        if is_ready
-        else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
+    response.status_code = status.HTTP_200_OK
 
     return ReadyResponse(
         service_id="nexus-slim",
-        status="ready" if is_ready else "not_ready",
+        status="ready",
         timestamp=utc_now(),
         checks={
             "configuration": HealthCheck(
                 status="operational",
-            ),
-            "mcpone": HealthCheck(
-                status=mcpone_status,
-                latency_ms=latency_ms,
-                message=message,
             ),
         },
     )

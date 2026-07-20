@@ -40,6 +40,7 @@ class HealthResponse(BaseModel):
     contract_version: Literal["health.v1"] = "health.v1"
     service: ServiceInfo
     status: HealthStatus
+    readiness: str | None = None
     timestamp: datetime
     uptime_seconds: int
     checks: dict[str, HealthCheck]
