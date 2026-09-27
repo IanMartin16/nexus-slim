@@ -37,12 +37,23 @@ def fmt_pct(v: Any) -> str:
     return f"{f:+.2f}%"
 
 
-def fmt_money(v: Any) -> str:
-    """1503.06 -> '1,503.06'. El fiat (USD) lo añade quien renderiza si lo necesita."""
-    f = _to_float(v)
-    if f is None:
-        return ""
-    return f"{f:,.2f}"
+def fmt_money(value) -> str:
+    n = _to_float(value)
+    if n is None:
+        return "—"
+    a = abs(n)
+    if a >= 1:
+        decimals = 2
+    elif a >= 0.01:
+        decimals = 4
+    else:
+        decimals = 8
+    # separador de miles + decimales adaptativos; recorta ceros sobrantes
+    # solo en el tramo de muchos decimales para no ensuciar (< $0.01).
+    s = f"{n:,.{decimals}f}"
+    if decimals == 8:
+        s = s.rstrip("0").rstrip(".")  # 0.00001520 -> 0.0000152
+    return s
 
 
 def fmt_confidence(v: Any) -> str:
