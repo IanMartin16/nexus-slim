@@ -203,18 +203,27 @@ def map_flag_list(result: NeutralResult) -> list[Section]:
 
 
 def map_prices(result: NeutralResult) -> list[Section]:
-    """prices: dict plano símbolo->precio ({'BTC': 64202.0})."""
-    d = result.data
-    fiat = result.meta.fiat or "USD"
-    # Los precios son las llaves que no son metadata.
-    skip = {"summary", "rows", "title"}
-    items = [
-        KpiItem(label=str(sym), value=fmt.fmt_money(price), unit=fiat, tone="neutral")
-        for sym, price in d.items()
-        if sym not in skip and isinstance(price, (int, float))
-    ]
-    if not items:
+    rows = result.data.get("rows", []) or []
+    if not rows:
         return _empty_state(result)
+    fiat = result.meta.fiat or "USD"
+    items = []
+    for r in rows[:8]:
+        symbol = str(r.get("symbol", ""))
+        price = r.get("price")
+        change = r.get("change24h")
+        # unit lleva el fiat; si hay cambio 24h, se muestra como contexto
+        unit = fiat
+        tone = "neutral"
+        if change is not None:
+            tone = "up" if change >= 0 else "down"
+            unit = f"{fiat}  ({change:+.2f}% 24h)"
+        items.append(KpiItem(
+            label=symbol,
+            value=fmt.fmt_money(price),
+            unit=unit,
+            tone=tone,
+        ))
     return [
         _notice(result),
         KpiGridSection(id=f"sec_kpis_{result.kind}", title=_title(result), items=items),
