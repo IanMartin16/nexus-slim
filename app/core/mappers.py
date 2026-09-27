@@ -201,6 +201,14 @@ def map_flag_list(result: NeutralResult) -> list[Section]:
         KpiGridSection(id=f"sec_flags_{result.kind}", title=_title(result), items=items),
     ]
 
+def _fmt_change(change: float | None) -> tuple[str, str]:
+        
+    if change is None:
+        return "", "neutral"
+    if abs(change) < _FLAT_THRESHOLD:
+        return "0.00% 24h", "neutral"       # nada de "-0.00%"
+    tone = "up" if change > 0 else "down"
+    return f"{change:+.2f}% 24h", tone
 
 def map_prices(result: NeutralResult) -> list[Section]:
     rows = result.data.get("rows", []) or []
@@ -211,13 +219,8 @@ def map_prices(result: NeutralResult) -> list[Section]:
     for r in rows[:8]:
         symbol = str(r.get("symbol", ""))
         price = r.get("price")
-        change = r.get("change24h")
-        # unit lleva el fiat; si hay cambio 24h, se muestra como contexto
-        unit = fiat
-        tone = "neutral"
-        if change is not None:
-            tone = "up" if change >= 0 else "down"
-            unit = f"{fiat}  ({change:+.2f}% 24h)"
+        change_txt, tone = _fmt_change(r.get("change24h"))
+        unit = fiat if not change_txt else f"{fiat}  ({change_txt})"
         items.append(KpiItem(
             label=symbol,
             value=fmt.fmt_money(price),
