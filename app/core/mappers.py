@@ -19,6 +19,7 @@ from typing import Callable
 
 from . import format as fmt
 from .contract import (
+    ChartPoint,
     ChartSection,
     ChartSeries,
     KpiGridSection,
@@ -26,6 +27,8 @@ from .contract import (
     NeutralResult,
     NoticeSection,
     Section,
+    SparklineItem,
+    SparklineSection,
     TextSection,
 )
 
@@ -40,6 +43,7 @@ TITLES = {
     "anomalies": "Anomalies",
     "social_pulse": "Social Pulse",
     "prices": "Prices",
+    "price_spark": "Recent Movement",
     "movers": "Top Movers",
     "snapshot": "Market Snapshot",
 }
@@ -279,6 +283,71 @@ def map_snapshot(result: NeutralResult) -> list[Section]:
         KpiGridSection(id=f"sec_kpis_{result.kind}", title=_title(result), items=items),
     ]
 
+def map_price_spark(
+    result: NeutralResult,
+) -> list[Section]:
+    rows = result.data.get("rows", []) or []
+
+    if not rows:
+        return _empty_state(result)
+
+    fiat = result.meta.fiat or "USD"
+
+    items: list[SparklineItem] = []
+
+    for row in rows[:4]:
+        raw_points = row.get("points") or []
+
+        sampled = _sample_spark_points(
+            raw_points,
+            max_points=32,
+        )
+
+        points = [
+            ChartPoint(
+                t=p.get("t"),
+                v=float(p["v"]),
+            )
+            for p in sampled
+            if isinstance(p, dict)
+            and p.get("v") is not None
+        ]
+
+        if len(points) < 2:
+            continue
+
+        first = points[0].v
+        last = points[-1].v
+
+        if last > first:
+            tone = "up"
+        elif last < first:
+            tone = "down"
+        else:
+            tone = "neutral"
+
+        items.append(
+            SparklineItem(
+                label=str(row.get("symbol", "")),
+                value=fmt.fmt_money(last),
+                unit=fiat,
+                tone=tone,
+                points=points,
+            )
+        )
+
+    if not items:
+        return _empty_state(result)
+
+    return [
+        _notice(result),
+        SparklineSection(
+            id="sec_sparkline_price_spark",
+            title=_title(result),
+            items=items,
+        ),
+    ]    
+
 
 def map_fallback(result: NeutralResult) -> list[Section]:
     """kind desconocido: degrada con gracia. La narrativa la cubre el LLM (tokens)."""
@@ -315,6 +384,7 @@ MAPPERS: dict[str, Callable[[NeutralResult], list[Section]]] = {
     "anomalies": map_flag_list,
     "social_pulse": map_social_pulse,
     "prices": map_prices,
+    "price_spark": map_price_spark,
     "movers": map_movers,
     "snapshot": map_snapshot,
     "_error": map_error,
@@ -325,3 +395,20 @@ def to_sections(result: NeutralResult) -> list[Section]:
     """Despacha por kind. kind no mapeado -> fallback (Lego: deploy independiente)."""
     mapper = MAPPERS.get(result.kind, map_fallback)
     return mapper(result)
+
+
+def _sample_spark_points(
+    points: list[dict],
+    max_points: int = 32,
+) -> list[dict]:
+    if len(points) <= max_points:
+        return points
+
+    step = (len(points) - 1) / (max_points - 1)
+
+    indexes = sorted({
+        round(i * step)
+        for i in range(max_points)
+    })
+
+    return [points[i] for i in indexes]

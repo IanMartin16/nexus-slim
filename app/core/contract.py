@@ -111,10 +111,24 @@ class ChartSection(BaseModel):
     title: str
     series: list[ChartSeries] = Field(default_factory=list)
 
+class SparklineItem(BaseModel):
+    label: str
+    value: str
+    unit: str = ""
+    tone: Tone = "neutral"
+    points: list[ChartPoint] = Field(default_factory=list)
+
+
+class SparklineSection(BaseModel):
+    type: Literal["sparkline"] = "sparkline"
+    id: str
+    title: str
+    items: list[SparklineItem] = Field(default_factory=list)    
+
 
 # Unión discriminada por `type` — espejo exacto del patrón de `kind` en la entrada.
 Section = Annotated[
-    Union[KpiGridSection, TextSection, NoticeSection, ChartSection],
+    Union[KpiGridSection, TextSection, NoticeSection, ChartSection, SparklineSection,],
     Field(discriminator="type"),
 ]
 
